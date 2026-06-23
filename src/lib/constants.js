@@ -25,18 +25,18 @@ export const OJE_RATING_IDS = [
   'oje_grasp', 'oje_energy', 'oje_hygiene',
   'oje_listening', 'oje_patience', 'oje_teamwork', 'oje_willingness',
 ]
-// 7 ratings × max 5 = 35 raw → scaled to 40: multiply raw sum by (40/35)
-export const OJE_SCORE_MAX     = 40
-export const OJE_SCORE_FORMULA = (rawSum) => Math.round((rawSum / 35) * 40 * 10) / 10
+// 7 ratings × max 5 = 35 raw → percentage
+export const OJE_SCORE_MAX     = 100
+export const OJE_SCORE_FORMULA = (rawSum) => Math.round((rawSum / 35) * 100) + '%'
 
 // ─── Interview rating field IDs (used for auto score calculation) ─────────────
 export const IV_RATING_IDS = [
   'iv_grooming', 'iv_interpersonal', 'iv_integrity',
   'iv_growth_mindset', 'iv_customer',
 ]
-// 5 ratings × max 5 = 25 raw → scaled to 15: multiply raw sum by (15/25) = 0.6
-export const IV_SCORE_MAX     = 15
-export const IV_SCORE_FORMULA = (rawSum) => Math.round((rawSum / 25) * 15 * 10) / 10
+// 5 ratings × max 5 = 25 raw → percentage
+export const IV_SCORE_MAX     = 100
+export const IV_SCORE_FORMULA = (rawSum) => Math.round((rawSum / 25) * 100) + '%'
 
 // ─── OJE FORM ────────────────────────────────────────────────────────────────
 export const OJE_FIELDS = [
@@ -56,7 +56,7 @@ export const OJE_FIELDS = [
   { id: 'oje_patience',    label: 'The individual had patience to learn',                                               type: 'rating', required: true },
   { id: 'oje_teamwork',    label: 'The individual interacted well with other team members and management',              type: 'rating', required: true },
   { id: 'oje_willingness', label: 'The individual showed good willingness to improve themselves and their performance', type: 'rating', required: true },
-  { id: 'oje_overall',     label: 'Overall Score (out of 40)',  type: 'auto_score', required: false }, // auto-calculated
+  { id: 'oje_overall',     label: 'Overall Score (%)',         type: 'auto_score', required: false },
   { id: 'oje_comments',    label: 'Comments',                   type: 'long_text',  required: true },
   { id: 'oje_email',       label: 'Email Address',              type: 'short_text', required: true },
 ]
@@ -69,7 +69,7 @@ export const INTERVIEW_FIELDS = [
   { id: 'iv_integrity',         label: 'Integrity and Trust',        type: 'rating',     required: true },
   { id: 'iv_growth_mindset',    label: 'Growth Mindset (HDNA)',      type: 'rating',     required: true },
   { id: 'iv_customer',          label: 'Customer Centricity (HDNA)', type: 'rating',     required: true },
-  { id: 'iv_total_marks',       label: 'Total Marks (out of 15)',    type: 'auto_score', required: false }, // auto-calculated
+  { id: 'iv_total_marks',       label: 'Total Score (%)',            type: 'auto_score', required: false }, // auto-calculated
   { id: 'iv_section',           label: 'Section',                    type: 'short_text', required: true },
   { id: 'iv_employment_type',   label: 'Full Time / Part Time',      type: 'dropdown',   required: true, options: ['Full Time', 'Part Time'] },
   { id: 'iv_recommended_branch',label: 'Recommended Branch',         type: 'dropdown',   required: true, options: ['Phase 6', 'CC', 'Bahria Town', 'Cloud Kitchen', 'Valencia', 'Johar Town', 'Emporium'] },
