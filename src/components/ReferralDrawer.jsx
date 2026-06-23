@@ -65,7 +65,7 @@ function RatingInput({ value, onChange }) {
 }
 
 // ─── Auto score display ───────────────────────────────────────────────────────
-function AutoScoreDisplay({ value, max }) {
+function AutoScoreDisplay({ value }) {
   const filled = value != null && value !== ''
   return (
     <div className={`flex items-center gap-3 px-3 py-2 rounded border ${
@@ -74,7 +74,7 @@ function AutoScoreDisplay({ value, max }) {
       <span className={`font-display text-xl font-700 ${filled ? 'text-moss' : 'text-gray-300'}`}>
         {filled ? value : '—'}
       </span>
-      <span className="text-xs text-gray-500">out of {max} · auto-calculated</span>
+      <span className="text-xs text-gray-500">auto-calculated</span>
     </div>
   )
 }
@@ -173,7 +173,7 @@ function HRInterviewForm({ referralId, existingFeedback, onSaved }) {
             if (f.type === 'auto_score') return (
               <div key={f.id}>
                 <div className="font-mono text-[10px] uppercase tracking-wide text-gray-500 mb-1">{f.label}</div>
-                <AutoScoreDisplay value={answers[f.id]} max={15} />
+                <AutoScoreDisplay value={answers[f.id]} />
               </div>
             )
 
@@ -231,7 +231,7 @@ function HRInterviewView({ feedback }) {
                 <div className="font-mono text-xs uppercase tracking-wide text-gray-500 mb-1">{a.label}</div>
                 {a.type === 'rating'
                   ? <RatingDisplay value={Number(sv(a.value))} />
-                  : <div className="font-display text-lg font-700 text-moss">{sv(a.value)} <span className="text-sm text-gray-400 font-sans font-400">/ 15</span></div>
+                  : <div className="font-display text-lg font-700 text-moss">{sv(a.value)}</div>
                 }
               </div>
             ) : (
@@ -277,7 +277,7 @@ function BLAnswersView({ answers, ojeOnly = false }) {
       <div key={i} className="py-2 border-b border-[#eee]">
         <div className="font-mono text-xs uppercase tracking-wide text-gray-500 mb-1">{a.label}</div>
         <div className="font-display text-lg font-700 text-moss">
-          {safeValue(a.value)} <span className="text-sm text-gray-400 font-sans font-400">/ {String(a.label).includes('40') ? '40' : '15'}</span>
+          {safeValue(a.value)}
         </div>
       </div>
     ) : (
@@ -390,7 +390,7 @@ function ReferralDrawer({ referral, onClose, canAct }) {
                     <div key={i} className="py-2 border-b border-[#eee]">
                       <div className="font-mono text-xs uppercase tracking-wide text-gray-500 mb-1">{a.label}</div>
                       <div className="font-display text-lg font-700 text-moss">
-                        {sv(a.value)} <span className="text-sm text-gray-400 font-sans font-400">/ 15</span>
+                        {sv(a.value)}
                       </div>
                     </div>
                   ) : (
