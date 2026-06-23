@@ -67,7 +67,7 @@ export default function HRBoard() {
       {/* ── Cards ── */}
       {visible.length === 0
         ? <Empty
-            title={`Nothing in ${STAGES[tab].label.toLowerCase()}`}
+            title={`Nothing in ${STAGES[tab]?.label?.toLowerCase() || tab}`}
             hint={tab === 'inbox'
               ? 'New referrals from branch leaders appear here.'
               : 'Move applications here as they progress.'}
