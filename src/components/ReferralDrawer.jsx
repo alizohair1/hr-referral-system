@@ -83,9 +83,15 @@ function AutoScoreDisplay({ value, max }) {
 function HRInterviewForm({ referralId, existingFeedback, onSaved }) {
   const inputCls = 'w-full px-3 py-2 text-sm border border-[#d8d6cf] bg-white focus:outline-none focus:border-accent'
   const [open, setOpen]     = useState(!!existingFeedback)
-  const [answers, setAnswers] = useState(() =>
-    existingFeedback && typeof existingFeedback === 'object' ? existingFeedback : {}
-  )
+  const [answers, setAnswers] = useState(() => {
+    if (!existingFeedback || typeof existingFeedback !== 'object') return {}
+    // existingFeedback values may be {type,label,value} objects — extract plain values
+    const flat = {}
+    for (const [k, v] of Object.entries(existingFeedback)) {
+      flat[k] = (v && typeof v === 'object' && 'value' in v) ? v.value : v
+    }
+    return flat
+  })
   const [busy, setBusy]   = useState(false)
   const [err, setErr]     = useState('')
   const [saved, setSaved] = useState(false)
