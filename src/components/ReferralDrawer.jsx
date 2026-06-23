@@ -456,11 +456,11 @@ export default function ReferralDrawer({ referral, onClose, canAct }) {
                     className="w-full px-3 py-2 text-sm border border-[#d8d6cf] bg-white focus:outline-none focus:border-accent"
                     rows={2} />
                   <div className="flex flex-wrap gap-2">
-                    {nextStages.map((s) => (
+                    {nextStages.filter((s) => STAGES[s]).map((s) => (
                       <Button key={s} disabled={busy}
                         variant={s === 'accepted' ? 'accept' : s === 'rejected' ? 'reject' : 'ghost'}
                         onClick={() => move(s)} className="flex-1 min-w-[120px]">
-                        {STAGES[s].label}
+                        {STAGES[s]?.label || s}
                       </Button>
                     ))}
                   </div>
