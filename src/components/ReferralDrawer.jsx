@@ -241,24 +241,31 @@ function BLAnswersView({ answers, ojeOnly = false }) {
     .map(([, v]) => v)
     .filter((a) => a && a.value != null && a.value !== '' && !(Array.isArray(a.value) && a.value.length === 0))
 
+  // safely extract a displayable string from a value that might be an object
+  function safeValue(v) {
+    if (v == null) return '—'
+    if (typeof v === 'object' && !Array.isArray(v) && v.value !== undefined) return String(v.value)
+    if (Array.isArray(v)) return v.join(', ')
+    return String(v)
+  }
+
   if (entries.length === 0) return <div className="text-sm text-gray-500">No details provided.</div>
 
   return entries.map((a, i) =>
     a.type === 'rating' ? (
       <div key={i} className="py-2 border-b border-[#eee]">
         <div className="font-mono text-xs uppercase tracking-wide text-gray-500 mb-1">{a.label}</div>
-        <RatingDisplay value={a.value} />
+        <RatingDisplay value={Number(safeValue(a.value))} />
       </div>
     ) : a.type === 'auto_score' ? (
       <div key={i} className="py-2 border-b border-[#eee]">
         <div className="font-mono text-xs uppercase tracking-wide text-gray-500 mb-1">{a.label}</div>
         <div className="font-display text-lg font-700 text-moss">
-          {a.value} <span className="text-sm text-gray-400 font-sans font-400">/ {a.label.includes('40') ? '40' : '15'}</span>
+          {safeValue(a.value)} <span className="text-sm text-gray-400 font-sans font-400">/ {String(a.label).includes('40') ? '40' : '15'}</span>
         </div>
       </div>
     ) : (
-      <Row key={i} label={a.label}
-        value={Array.isArray(a.value) ? a.value.join(', ') : String(a.value)} />
+      <Row key={i} label={a.label} value={safeValue(a.value)} />
     )
   )
 }
