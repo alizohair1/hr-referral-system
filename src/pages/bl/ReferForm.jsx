@@ -32,12 +32,14 @@ function RatingInput({ value, onChange }) {
   )
 }
 
-function AutoScoreDisplay({ value, max }) {
+function AutoScoreDisplay({ value }) {
   const filled = value != null && value !== ''
   return (
     <div className={`flex items-center gap-3 px-4 py-3 rounded border ${filled ? 'bg-moss/10 border-moss/30' : 'bg-[#f9f8f5] border-[#e4e2db]'}`}>
-      <span className={`font-display text-2xl font-700 ${filled ? 'text-moss' : 'text-gray-300'}`}>{filled ? value : '—'}</span>
-      <span className="text-sm text-gray-500">out of {max} · auto-calculated</span>
+      <span className={`font-display text-2xl font-700 ${filled ? 'text-moss' : 'text-gray-300'}`}>
+        {filled ? value : '—'}
+      </span>
+      <span className="text-sm text-gray-500">auto-calculated from ratings above</span>
     </div>
   )
 }
@@ -210,7 +212,7 @@ export default function ReferForm() {
             if (f.type === 'auto_score') return (
               <div key={f.id}>
                 <div className="font-mono text-xs uppercase tracking-wide text-gray-500 mb-1.5">{f.label}</div>
-                <AutoScoreDisplay value={answers[f.id]} max={15} />
+                <AutoScoreDisplay value={answers[f.id]} />
               </div>
             )
             return <FormField key={f.id} field={f} value={answers[f.id]} onChange={setAns(f.id)} />
@@ -223,7 +225,7 @@ export default function ReferForm() {
             if (f.type === 'auto_score') return (
               <div key={f.id}>
                 <div className="font-mono text-xs uppercase tracking-wide text-gray-500 mb-1.5">{f.label}</div>
-                <AutoScoreDisplay value={answers[f.id]} max={40} />
+                <AutoScoreDisplay value={answers[f.id]} />
               </div>
             )
             return <FormField key={f.id} field={f} value={answers[f.id]} onChange={setAns(f.id)} />
