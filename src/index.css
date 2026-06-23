@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background: #f6f5f1;
+  color: #13161c;
+  -webkit-font-smoothing: antialiased;
+}
+.ledger { background:#fff; border:1px solid #e4e2db; box-shadow:2px 2px 0 #e4e2db; }
+.ledger-tight { background:#fff; border:1px solid #e4e2db; }
+@media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }
