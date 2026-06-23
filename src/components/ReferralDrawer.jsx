@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Component } from 'react'
 import { supabase } from '../lib/supabase'
 import { getCvObjectUrl } from '../lib/cv'
 import {
@@ -247,7 +247,14 @@ function BLAnswersView({ answers, ojeOnly = false }) {
       return true
     })
     .map(([, v]) => v)
-    .filter((a) => a && a.value != null && a.value !== '' && !(Array.isArray(a.value) && a.value.length === 0))
+    .filter((a) => {
+      if (!a || typeof a !== 'object') return false
+      // must have a label and type to be a valid answer entry
+      if (!a.label || !a.type) return false
+      if (a.value == null || a.value === '') return false
+      if (Array.isArray(a.value) && a.value.length === 0) return false
+      return true
+    })
 
   // safely extract a displayable string from a value that might be an object
   function safeValue(v) { return sv(v) }
@@ -274,7 +281,7 @@ function BLAnswersView({ answers, ojeOnly = false }) {
 }
 
 // ─── Main Drawer ──────────────────────────────────────────────────────────────
-export default function ReferralDrawer({ referral, onClose, canAct }) {
+function ReferralDrawer({ referral, onClose, canAct }) {
   const [cv, setCv]         = useState(null)
   const [events, setEvents] = useState([])
   const [busy, setBusy]     = useState(false)
@@ -483,5 +490,33 @@ export default function ReferralDrawer({ referral, onClose, canAct }) {
         </div>
       </div>
     </div>
+  )
+}
+
+// ─── Error boundary — prevents white screen if drawer crashes ─────────────────
+class DrawerErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null } }
+  static getDerivedStateFromError(e) { return { error: e } }
+  render() {
+    if (this.state.error) return (
+      <div className="fixed inset-0 z-50 flex justify-end">
+        <div className="absolute inset-0 bg-black/30" onClick={this.props.onClose} />
+        <div className="relative w-full max-w-md bg-paper h-full flex flex-col items-center justify-center gap-4 shadow-2xl p-8">
+          <div className="text-clay text-sm font-medium">Failed to load application details.</div>
+          <div className="text-xs text-gray-400 font-mono">{String(this.state.error?.message || '')}</div>
+          <button onClick={this.props.onClose}
+            className="px-4 py-2 bg-ink text-paper text-sm">Close</button>
+        </div>
+      </div>
+    )
+    return this.props.children
+  }
+}
+
+export default function ReferralDrawerWithBoundary(props) {
+  return (
+    <DrawerErrorBoundary onClose={props.onClose}>
+      <ReferralDrawer {...props} />
+    </DrawerErrorBoundary>
   )
 }
