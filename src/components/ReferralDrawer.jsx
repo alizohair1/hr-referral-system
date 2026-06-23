@@ -8,6 +8,15 @@ import {
 import { StageBadge, Button, Spinner } from './ui'
 import { X, FileText, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 
+// safely convert any value to a renderable string — prevents React error #31
+// when DB stores nested {type,label,value} objects inside answer values
+function sv(v) {
+  if (v == null) return '—'
+  if (typeof v === 'object' && !Array.isArray(v) && 'value' in v) return sv(v.value)
+  if (Array.isArray(v)) return v.map(sv).join(', ')
+  return String(v)
+}
+
 // ─── Simple label/value row ───────────────────────────────────────────────────
 function Row({ label, value }) {
   if (!value && value !== 0) return null
@@ -215,13 +224,12 @@ function HRInterviewView({ feedback }) {
               <div key={i} className="py-2 border-b border-[#eee]">
                 <div className="font-mono text-xs uppercase tracking-wide text-gray-500 mb-1">{a.label}</div>
                 {a.type === 'rating'
-                  ? <RatingDisplay value={a.value} />
-                  : <div className="font-display text-lg font-700 text-moss">{a.value} <span className="text-sm text-gray-400 font-sans font-400">/ 15</span></div>
+                  ? <RatingDisplay value={Number(sv(a.value))} />
+                  : <div className="font-display text-lg font-700 text-moss">{sv(a.value)} <span className="text-sm text-gray-400 font-sans font-400">/ 15</span></div>
                 }
               </div>
             ) : (
-              <Row key={i} label={a.label}
-                value={Array.isArray(a.value) ? a.value.join(', ') : String(a.value ?? '')} />
+              <Row key={i} label={a.label} value={sv(a.value)} />
             )
           )}
         </div>
@@ -242,12 +250,7 @@ function BLAnswersView({ answers, ojeOnly = false }) {
     .filter((a) => a && a.value != null && a.value !== '' && !(Array.isArray(a.value) && a.value.length === 0))
 
   // safely extract a displayable string from a value that might be an object
-  function safeValue(v) {
-    if (v == null) return '—'
-    if (typeof v === 'object' && !Array.isArray(v) && v.value !== undefined) return String(v.value)
-    if (Array.isArray(v)) return v.join(', ')
-    return String(v)
-  }
+  function safeValue(v) { return sv(v) }
 
   if (entries.length === 0) return <div className="text-sm text-gray-500">No details provided.</div>
 
@@ -368,18 +371,17 @@ export default function ReferralDrawer({ referral, onClose, canAct }) {
                   a.type === 'rating' ? (
                     <div key={i} className="py-2 border-b border-[#eee]">
                       <div className="font-mono text-xs uppercase tracking-wide text-gray-500 mb-1">{a.label}</div>
-                      <RatingDisplay value={a.value} />
+                      <RatingDisplay value={Number(sv(a.value))} />
                     </div>
                   ) : a.type === 'auto_score' ? (
                     <div key={i} className="py-2 border-b border-[#eee]">
                       <div className="font-mono text-xs uppercase tracking-wide text-gray-500 mb-1">{a.label}</div>
                       <div className="font-display text-lg font-700 text-moss">
-                        {a.value} <span className="text-sm text-gray-400 font-sans font-400">/ 15</span>
+                        {sv(a.value)} <span className="text-sm text-gray-400 font-sans font-400">/ 15</span>
                       </div>
                     </div>
                   ) : (
-                    <Row key={i} label={a.label}
-                      value={Array.isArray(a.value) ? a.value.join(', ') : String(a.value ?? '')} />
+                    <Row key={i} label={a.label} value={sv(a.value)} />
                   )
                 )}
               </div>
