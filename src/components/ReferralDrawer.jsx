@@ -1,12 +1,15 @@
 import { useEffect, useState, Component } from 'react'
 import { supabase } from '../lib/supabase'
 import { getCvObjectUrl } from '../lib/cv'
+import { useAuth } from '../context/AuthContext'
 import {
   STAGES, PIPELINE,
-  INTERVIEW_FIELDS, IV_RATING_IDS, IV_SCORE_FORMULA,
+  OJE_FIELDS, INTERVIEW_FIELDS,
+  OJE_RATING_IDS, OJE_SCORE_FORMULA,
+  IV_RATING_IDS, IV_SCORE_FORMULA,
 } from '../lib/constants'
 import { StageBadge, Button, Spinner } from './ui'
-import { X, FileText, Clock, ChevronDown, ChevronUp } from 'lucide-react'
+import { X, FileText, Clock, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
 
 // safely convert any value to a renderable string — prevents React error #31
 // when DB stores nested {type,label,value} objects inside answer values
@@ -286,12 +289,173 @@ function BLAnswersView({ answers, ojeOnly = false }) {
   )
 }
 
+// ─── Inline edit form ─────────────────────────────────────────────────────────
+function EditForm({ referral, onSaved, onCancel }) {
+  const inputCls = 'w-full px-3 py-2 text-sm border border-[#d8d6cf] bg-white focus:outline-none focus:border-accent'
+  const allFields = [...INTERVIEW_FIELDS, ...OJE_FIELDS]
+
+  // flatten existing answers to plain values
+  const rawAnswers = referral.answers && typeof referral.answers === 'object' ? referral.answers : {}
+  const [candidateName, setCandidateName] = useState(referral.candidate_name || '')
+  const [answers, setAnswers] = useState(() => {
+    const flat = {}
+    for (const f of allFields) {
+      const stored = rawAnswers[f.id]
+      if (stored && typeof stored === 'object' && 'value' in stored) flat[f.id] = stored.value
+      else if (stored !== undefined) flat[f.id] = stored
+    }
+    return flat
+  })
+  const [busy, setBusy] = useState(false)
+  const [err, setErr]   = useState('')
+
+  const setAns = (id) => (val) => setAnswers((a) => ({ ...a, [id]: val }))
+
+  // auto-calculate Interview score
+  useEffect(() => {
+    const vals = IV_RATING_IDS.map((id) => Number(answers[id]) || 0)
+    const allFilled = vals.every((v) => v > 0)
+    if (allFilled) setAnswers((a) => ({ ...a, iv_total_marks: IV_SCORE_FORMULA(vals.reduce((a, b) => a + b, 0)) }))
+    else setAnswers((a) => ({ ...a, iv_total_marks: '' }))
+  }, [answers.iv_grooming, answers.iv_interpersonal, answers.iv_integrity, answers.iv_growth_mindset, answers.iv_customer])
+
+  // auto-calculate OJE score
+  useEffect(() => {
+    const vals = OJE_RATING_IDS.map((id) => Number(answers[id]) || 0)
+    const allFilled = vals.every((v) => v > 0)
+    if (allFilled) setAnswers((a) => ({ ...a, oje_overall: OJE_SCORE_FORMULA(vals.reduce((a, b) => a + b, 0)) }))
+    else setAnswers((a) => ({ ...a, oje_overall: '' }))
+  }, [answers.oje_grasp, answers.oje_energy, answers.oje_hygiene, answers.oje_listening, answers.oje_patience, answers.oje_teamwork, answers.oje_willingness])
+
+  async function save(e) {
+    e.preventDefault(); setErr(''); setBusy(true)
+    try {
+      // rebuild answer snapshot preserving hr_interview and merging updated fields
+      const updatedAnswers = { ...rawAnswers }
+      for (const f of allFields) {
+        const v = answers[f.id]
+        if (v !== undefined && v !== '' && v !== 0)
+          updatedAnswers[f.id] = { label: f.label, type: f.type, value: v }
+        else
+          delete updatedAnswers[f.id]
+      }
+      const { error } = await supabase.from('referrals').update({
+        candidate_name: candidateName.trim(),
+        answers: updatedAnswers,
+      }).eq('id', referral.id)
+      if (error) throw error
+      onSaved()
+    } catch (e) { setErr(e.message) } finally { setBusy(false) }
+  }
+
+  return (
+    <form onSubmit={save} className="space-y-5 pb-6">
+      <div className="flex items-center justify-between pt-2">
+        <h3 className="font-display font-700 text-sm">Editing application</h3>
+        <button type="button" onClick={onCancel} className="text-xs text-gray-500 hover:text-clay flex items-center gap-1">
+          <X size={13} /> Cancel
+        </button>
+      </div>
+
+      {/* Candidate name */}
+      <div>
+        <label className="block font-mono text-[10px] uppercase tracking-wide text-gray-500 mb-1">Candidate Name <span className="text-clay">*</span></label>
+        <input className={inputCls} value={candidateName} onChange={(e) => setCandidateName(e.target.value)} required />
+      </div>
+
+      {/* Interview Form fields */}
+      <div className="border-t border-[#e4e2db] pt-4">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-gray-400 mb-3">Interview Form</div>
+        <div className="space-y-4">
+          {INTERVIEW_FIELDS.map((f) => <EditField key={f.id} field={f} value={answers[f.id]} onChange={setAns(f.id)} inputCls={inputCls} />)}
+        </div>
+      </div>
+
+      {/* OJE Form fields */}
+      <div className="border-t border-[#e4e2db] pt-4">
+        <div className="font-mono text-[10px] uppercase tracking-widest text-gray-400 mb-3">OJE Form</div>
+        <div className="space-y-4">
+          {OJE_FIELDS.map((f) => <EditField key={f.id} field={f} value={answers[f.id]} onChange={setAns(f.id)} inputCls={inputCls} />)}
+        </div>
+      </div>
+
+      {err && <div className="text-sm text-clay bg-clay/10 border border-clay/30 px-3 py-2">{err}</div>}
+      <div className="flex gap-3 pt-2">
+        <Button type="submit" disabled={busy}>{busy ? <Spinner /> : 'Save changes'}</Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+      </div>
+    </form>
+  )
+}
+
+// ─── Single editable field ────────────────────────────────────────────────────
+function EditField({ field, value, onChange, inputCls }) {
+  if (field.type === 'auto_score') return (
+    <div>
+      <div className="font-mono text-[10px] uppercase tracking-wide text-gray-500 mb-1">{field.label}</div>
+      <div className="px-3 py-2 bg-[#f9f8f5] border border-[#e4e2db] text-sm text-moss font-700">
+        {value || '—'} <span className="text-xs text-gray-400 font-400">auto-calculated</span>
+      </div>
+    </div>
+  )
+  if (field.type === 'rating') return (
+    <div>
+      <label className="block font-mono text-[10px] uppercase tracking-wide text-gray-500 mb-1">{field.label}</label>
+      <div className="flex items-center gap-1">
+        {[1,2,3,4,5].map((n) => (
+          <button key={n} type="button" onClick={() => onChange(n)}
+            className={`w-8 h-8 rounded border text-xs font-mono font-600 transition
+              ${value >= n ? 'bg-accent text-white border-accent' : 'bg-white text-gray-400 border-[#d8d6cf] hover:border-accent'}`}>
+            {n}
+          </button>
+        ))}
+        {value > 0 && <button type="button" onClick={() => onChange(0)} className="ml-1 text-xs text-gray-400 hover:text-clay underline">clear</button>}
+      </div>
+    </div>
+  )
+  if (field.type === 'dropdown') return (
+    <div>
+      <label className="block font-mono text-[10px] uppercase tracking-wide text-gray-500 mb-1">{field.label}</label>
+      <select className={inputCls} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Select…</option>
+        {field.options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  )
+  if (field.type === 'date') return (
+    <div>
+      <label className="block font-mono text-[10px] uppercase tracking-wide text-gray-500 mb-1">{field.label}</label>
+      <input type="date" className={inputCls} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  )
+  if (field.type === 'long_text') return (
+    <div>
+      <label className="block font-mono text-[10px] uppercase tracking-wide text-gray-500 mb-1">{field.label}</label>
+      <textarea className={inputCls} rows={2} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  )
+  if (field.type === 'number') return (
+    <div>
+      <label className="block font-mono text-[10px] uppercase tracking-wide text-gray-500 mb-1">{field.label}</label>
+      <input type="number" className={inputCls} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  )
+  return (
+    <div>
+      <label className="block font-mono text-[10px] uppercase tracking-wide text-gray-500 mb-1">{field.label}</label>
+      <input type="text" className={inputCls} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  )
+}
+
 // ─── Main Drawer ──────────────────────────────────────────────────────────────
 function ReferralDrawer({ referral, onClose, canAct }) {
+  const { profile }         = useAuth()
   const [cv, setCv]         = useState(null)
   const [events, setEvents] = useState([])
   const [busy, setBusy]     = useState(false)
   const [reason, setReason] = useState('')
+  const [editing, setEditing] = useState(false)
 
   useEffect(() => {
     if (!referral) return
@@ -313,6 +477,9 @@ function ReferralDrawer({ referral, onClose, canAct }) {
   const isFinal        = ['accepted', 'rejected'].includes(referral.stage)
   const showHRForm     = isClaimed && !['inbox'].includes(referral.stage)
   const nextStages     = PIPELINE.filter((s) => s !== referral.stage)
+
+  // edit permissions: HR and admin can edit any app until final
+  const canEdit = !isFinal && ['hr', 'admin'].includes(profile?.role)
 
   // For HR-initiated apps: the top-level answers ARE the HR interview form
   // For BL-initiated apps: the top-level answers are BL's OJE + interview submission
@@ -352,12 +519,27 @@ function ReferralDrawer({ referral, onClose, canAct }) {
             <div className="font-display text-lg font-700">{referral.candidate_name}</div>
             <div className="text-white/60 text-sm">{referral.position || '—'}</div>
           </div>
-          <button onClick={onClose} className="text-white/70 hover:text-white"><X size={20} /></button>
+          <div className="flex items-center gap-2">
+            {canEdit && !editing && (
+              <button onClick={() => setEditing(true)}
+                className="flex items-center gap-1.5 text-xs text-white/70 hover:text-white border border-white/20 hover:border-white/50 px-2.5 py-1.5 transition">
+                <Pencil size={13} /> Edit
+              </button>
+            )}
+            <button onClick={onClose} className="text-white/70 hover:text-white"><X size={20} /></button>
+          </div>
         </div>
 
         <div className="p-6 space-y-6">
 
-          {/* Stage + date */}
+          {/* Edit mode */}
+          {editing ? (
+            <EditForm
+              referral={referral}
+              onSaved={() => { setEditing(false); onClose() }}
+              onCancel={() => setEditing(false)}
+            />
+          ) : (<>
           <div className="flex items-center justify-between">
             <StageBadge stage={referral.stage} />
             <span className="font-mono text-xs text-gray-500">
@@ -493,6 +675,7 @@ function ReferralDrawer({ referral, onClose, canAct }) {
             </section>
           )}
 
+          </>)}
         </div>
       </div>
     </div>
