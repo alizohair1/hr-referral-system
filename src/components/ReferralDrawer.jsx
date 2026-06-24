@@ -380,12 +380,30 @@ function EditForm({ referral, onSaved, onCancel }) {
       </div>
 
       {err && <div className="text-sm text-clay bg-clay/10 border border-clay/30 px-3 py-2">{err}</div>}
-      <div className="flex gap-3 pt-2">
+      <div className="flex flex-wrap gap-3 pt-2">
         <Button type="submit" disabled={busy}>{busy ? <Spinner /> : 'Save changes'}</Button>
+        <Button type="button" variant="reject" disabled={busy} onClick={markNotRecommended}>
+          {busy ? <Spinner /> : 'Not Recommended'}
+        </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
       </div>
     </form>
   )
+
+  async function markNotRecommended() {
+    if (!confirm('Mark this application as Not Recommended? This will move it to Rejected.')) return
+    setBusy(true)
+    setErr('')
+    try {
+      const { error } = await supabase.rpc('move_stage', {
+        p_referral_id: referral.id,
+        p_to_stage:    'rejected',
+        p_reason:      'Not recommended',
+      })
+      if (error) throw error
+      onSaved()
+    } catch (e) { setErr(e.message) } finally { setBusy(false) }
+  }
 }
 
 // ─── Single editable field ────────────────────────────────────────────────────
