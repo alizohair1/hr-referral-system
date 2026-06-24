@@ -94,6 +94,7 @@ export default function HRCreateApplication() {
   const [busy, setBusy]                   = useState(false)
   const [err, setErr]                     = useState('')
   const [done, setDone]                   = useState(false)
+  const [doneType, setDoneType]           = useState('') // 'sent' | 'not_recommended'
 
   const setAns = (id) => (val) => setAnswers((a) => ({ ...a, [id]: val }))
 
@@ -147,16 +148,68 @@ export default function HRCreateApplication() {
         stage: 'inbox', initiated_by: 'hr', bl_oje_pending: true,
       })
       if (error) throw error
+      setDoneType('sent')
       setDone(true)
       setTimeout(() => nav('/hr/board'), 1500)
     } catch (e) { setErr(e.message) } finally { setBusy(false) }
   }
 
+  async function notRecommended() {
+    setErr('')
+    if (!candidateName.trim()) return setErr('Candidate name is required.')
+    // branch not required for not recommended
+    for (const f of INTERVIEW_FIELDS) {
+      if (!f.required || f.type === 'auto_score') continue
+      const v = answers[f.id]
+      if (v == null || v === '' || v === 0) return setErr(`Please fill: ${f.label}`)
+    }
+    setBusy(true)
+    try {
+      let cv_path = null, cv_name = null, cv_mime = null
+      if (cv) { const m = await uploadCv(cv, profile.id); cv_path = m.path; cv_name = m.originalName; cv_mime = m.mime }
+
+      const answerSnapshot = {}
+      for (const f of INTERVIEW_FIELDS) {
+        const v = answers[f.id]
+        if (v !== undefined && v !== '' && v !== 0)
+          answerSnapshot[f.id] = { label: f.label, type: f.type, value: v }
+      }
+
+      const { error } = await supabase.from('referrals').insert({
+        candidate_name:  candidateName.trim(),
+        position:        answers['iv_position'] || null,
+        answers:         answerSnapshot,
+        cv_path, cv_name, cv_mime,
+        referred_by:     profile.id,
+        branch:          branch || null,
+        assigned_branch: branch || null,
+        stage:           'rejected',      // goes straight to rejected
+        initiated_by:    'hr',
+        bl_oje_pending:  false,           // never goes to BL
+      })
+      if (error) throw error
+      setDoneType('not_recommended')
+      setDone(true)
+      setTimeout(() => nav('/hr/applications'), 1500)
+    } catch (e) { setErr(e.message) } finally { setBusy(false) }
+  }
+
   if (done) return (
     <div className="grid place-items-center py-24 text-center">
-      <CheckCircle2 size={48} className="text-moss" />
-      <h2 className="font-display text-2xl font-700 mt-4">Application sent to branch</h2>
-      <p className="text-gray-500 mt-1">The BL will fill the OJE form and send it back.</p>
+      {doneType === 'not_recommended'
+        ? <>
+            <div className="w-12 h-12 rounded-full bg-clay/10 flex items-center justify-center">
+              <X size={24} className="text-clay" />
+            </div>
+            <h2 className="font-display text-2xl font-700 mt-4">Marked as Not Recommended</h2>
+            <p className="text-gray-500 mt-1">Application saved and moved to rejected. Redirecting…</p>
+          </>
+        : <>
+            <CheckCircle2 size={48} className="text-moss" />
+            <h2 className="font-display text-2xl font-700 mt-4">Application sent to branch</h2>
+            <p className="text-gray-500 mt-1">The BL will fill the OJE form and send it back.</p>
+          </>
+      }
     </div>
   )
 
@@ -172,7 +225,7 @@ export default function HRCreateApplication() {
         <Field label="Candidate name" required>
           <input className={inputCls} value={candidateName} onChange={(e) => setCandidateName(e.target.value)} required />
         </Field>
-        <Field label="Assign to branch" required>
+        <Field label="Assign to branch (required for Send to BL)">
           <select className={inputCls} value={branch} onChange={(e) => setBranch(e.target.value)}>
             <option value="">Select branch…</option>
             {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
@@ -202,8 +255,13 @@ export default function HRCreateApplication() {
         </div>
 
         {err && <div className="text-sm text-clay bg-clay/10 border border-clay/30 px-3 py-2">{err}</div>}
-        <div className="flex gap-3 pt-2">
-          <Button type="submit" disabled={busy}>{busy ? <Spinner /> : 'Send to branch BL'}</Button>
+        <div className="flex flex-wrap gap-3 pt-2">
+          <Button type="submit" disabled={busy}>
+            {busy ? <Spinner /> : 'Send to branch BL'}
+          </Button>
+          <Button type="button" variant="reject" disabled={busy} onClick={notRecommended}>
+            {busy ? <Spinner /> : 'Not Recommended'}
+          </Button>
           <Button type="button" variant="ghost" onClick={() => nav('/hr/board')}>Cancel</Button>
         </div>
       </form>
